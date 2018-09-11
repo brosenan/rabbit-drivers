@@ -80,6 +80,8 @@ QueueService.Queue q = qs.defineQueue("foo");
 q.enqueue("Hello, World".getBytes());
 ```
 
+More details on the implementation can be found [here](core.md).
+
 ## Development
 
 This library consists of two parts:
