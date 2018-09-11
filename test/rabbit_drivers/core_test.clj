@@ -14,9 +14,11 @@
                                        RecoverableError)))
 
 
-;; # Initialization
+;; # RMQueuingService
 
-;; The `init` function (mapped to the constructor), takes a Java
+;; ## Initialization
+
+;; The `qs-init` function (mapped to the constructor), takes a Java
 ;; `Map` object containing properties for the queue service, and
 ;; initializes a connection and a channel. The two are returned as the
 ;; state of the object. The preceding empty vector in the return value
@@ -28,8 +30,8 @@
    (.put props "ports" ports)
    (.put ports "amqp" 1234)
    (.put ports "other" 4321)
-   (qs/init props) => [[] {:conn ..conn..
-                           :chan ..chan..}]
+   (qs/qs-init props) => [[] {:conn ..conn..
+                              :chan ..chan..}]
    (provided
     (rmq/connect {:host "foo"
                   :port 1234}) => ..conn..
@@ -40,7 +42,7 @@
 ;; create the following struct to mock an object with such a field.
 (defrecord MockObj [state])
 
-;; # Defining a Queue
+;; ## Defining a Queue
 
 ;; The `defineQueue` method takes a name and returns a queue
 ;; object. Internally, it defines a queue with the same name. It is
@@ -50,11 +52,11 @@
 ;; `injectthedriver.interfaces.QueueService.Queue`.
 (fact
  (let [driver (MockObj. {:chan ..chan..})]
-   (qs/defineQueue driver ..name..) => (partial instance? QueueService$Queue)
+   (qs/qs-defineQueue driver ..name..) => (partial instance? QueueService$Queue)
    (provided
     (lq/declare ..chan.. ..name.. {:exclusive false :auto-delete false}) => nil)))
 
-;; # Enqueuing
+;; ## Enqueuing
 
 ;; Given a queue, its `.enqueue` method publishes a task on
 ;; it. Internally, publishing is done on the default exchange, with a
@@ -64,7 +66,7 @@
 (fact
  (let [msg (.getBytes "foobar" "utf8")]
    (let [driver (MockObj. {:chan ..chan..})
-         queue (qs/defineQueue driver ..name..)]
+         queue (qs/qs-defineQueue driver ..name..)]
      (.enqueue queue msg)) => nil
    (provided
     (lq/declare ..chan.. ..name.. irrelevant) => irrelevant
@@ -72,7 +74,7 @@
     (lb/publish ..chan.. "" ..name.. msg {:content-type "application/octet-stream"}) => irrelevant)))
 
 
-;; # Registerring to Tasks
+;; ## Registerring to Tasks
 
 ;; The `.register` method of a queue takes a callback object
 ;; (implementation of
@@ -81,7 +83,7 @@
 ;; queue. Internally, it starts a consumer.
 (fact
  (let [driver (MockObj. {:chan ..chan..})
-       queue (qs/defineQueue driver ..name..)
+       queue (qs/qs-defineQueue driver ..name..)
        cb (reify QueueService$Callback
             (handleTask [this data]))]
    (.register queue cb)) => (partial instance? Stoppable)
@@ -93,7 +95,7 @@
 ;; consumer to be canceled.
 (fact
  (let [driver (MockObj. {:chan ..chan..})
-       queue (qs/defineQueue driver ..name..)
+       queue (qs/qs-defineQueue driver ..name..)
        cb (reify QueueService$Callback
             (handleTask [this data]))
        stoppable (.register queue cb)]
@@ -103,7 +105,7 @@
   (lc/subscribe ..chan.. ..name.. irrelevant) => ..constag..
   (lb/cancel ..chan.. ..constag..) => irrelevant))
 
-;; ## Callback Wrapper
+;; ### Callback Wrapper
 
 ;; The `callback-wrapper` function takes a `QueueService$Callback`
 ;; object, an ack function (intended to be `lb/ack`), a nack function
@@ -122,7 +124,7 @@
        myack #(swap! acks conj [%1 %2])
        mynack #(swap! nacks conj [%1 %2])
        mylog #(swap! logs conj %)
-       wrapped (qs/callback-wrapper cb myack mynack mylog)
+       wrapped (qs/qs-callback-wrapper cb myack mynack mylog)
        bytes (.getBytes "foobar")]
    (wrapped ..chan.. {:delivery-tag ..deltag..} bytes) => nil
    @calls => [bytes]
@@ -143,7 +145,7 @@
        myack #(swap! acks conj [%1 %2])
        mynack #(swap! nacks conj [%1 %2])
        mylog #(swap! logs conj %)
-       wrapped (qs/callback-wrapper cb myack mynack mylog)
+       wrapped (qs/qs-callback-wrapper cb myack mynack mylog)
        bytes (.getBytes "foobar")]
    (wrapped ..chan.. {:delivery-tag ..deltag..} bytes) => nil
    @acks => []
@@ -162,9 +164,67 @@
        myack #(swap! acks conj [%1 %2])
        mynack #(swap! nacks conj [%1 %2])
        mylog #(swap! logs conj %)
-       wrapped (qs/callback-wrapper cb myack mynack mylog)
+       wrapped (qs/qs-callback-wrapper cb myack mynack mylog)
        bytes (.getBytes "foobar")]
    (wrapped ..chan.. {:delivery-tag ..deltag..} bytes) => nil
    @acks => [[..chan.. ..deltag..]]
    @nacks => []
    (first @logs) => (partial instance? Exception)))
+
+;; # RMQPubSub
+
+;; `RMQPubSub` implements the
+;; `injectthedriver.interfaces.PubSubService` interface. Its
+;; constructor (`ps-init`) initializes connection to a broker (based
+;; on the properties it receives), opens a channel, and defines a
+;; `pubsub` exchange to be a topic-exchange.
+(fact
+ (let [props (HashMap.)
+       ports (HashMap.)]
+   (.put props "hostname" "foo")
+   (.put props "ports" ports)
+   (.put ports "amqp" 1234)
+   (.put ports "other" 4321)
+   (qs/ps-init props) => [[] {:conn ..conn..
+                              :chan ..chan..}]
+   (provided
+    (rmq/connect {:host "foo"
+                  :port 1234}) => ..conn..
+    (lch/open ..conn..) => ..chan..
+    (le/declare ..chan.. "pubsub" "topic" {:durable true}) => nil)))
+
+;; ## Publishing
+
+;; The `.publish` method (mapped to `ps-publish`) takes a topic and a
+;; message, and publishes the topic on the message. It calls Langohr's
+;; `publish`, to publish on the `pubsub` exchange, with the topic as
+;; routing key.
+(fact
+ (let [driver (MockObj. {:chan ..chan..})]
+   (qs/ps-publish driver ..topic.. ..msg..) => nil
+   (provided
+    (lb/publish ..chan.. "pubsub" ..topic.. ..msg..) => irrelevant)))
+
+;; ## Subscribing
+
+;; The `.subscribe` method (mapped to `ps-subscribe`) creates an
+;; exclusive queue, binds it to the `pubsub` exchange under the given
+;; topic, and subscribes to it.
+(fact
+ (let [driver (MockObj. {:chan ..chan..})]
+   (qs/ps-subscribe driver ..topic.. ..callback..) => irrelevant
+   (provided
+    (lq/declare ..chan..) => ..q..
+    (lq/bind ..chan.. ..q.. "pubsub" {:routing-key ..topic..}) => irrelevant
+    (lc/subscribe ..chan.. ..q.. (qs/qs-callback-wrapper ..callback.. lb/ack lb/nack println)) => ..subs..)))
+
+;; The returned object has a `.stop` method, which calls Langohr's `cancel` on the subscriber.
+(fact
+ (let [driver (MockObj. {:chan ..chan..})
+       subs (qs/ps-subscribe driver ..topic.. ..callback..)]
+   (.stop subs)) => nil
+ (provided
+  (lq/declare ..chan..) => ..q..
+  (lq/bind ..chan.. ..q.. "pubsub" {:routing-key ..topic..}) => irrelevant
+  (lc/subscribe ..chan.. ..q.. (qs/qs-callback-wrapper ..callback.. lb/ack lb/nack println)) => ..subs..
+  (lb/cancel ..chan.. ..subs..) => irrelevant))

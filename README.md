@@ -88,6 +88,10 @@ To run Kubernetes-level tests:
 2. Make sure you have a working Kubernetes cluster, with `kubectl` configured.
 3. `lein midje :filter kube`.
 
+When running the kube tests, if a test fails, its namespace remains
+untouched, to allow investigation. It is your responsibility to delete
+it before re-running the test.
+
 ## License
 
 Copyright © 2018 Boaz Rosenan
