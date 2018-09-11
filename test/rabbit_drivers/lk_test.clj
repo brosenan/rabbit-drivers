@@ -116,7 +116,7 @@
                                 subs (.subscribe ps topic (reify QueueService$Callback
                                                             (handleTask [this data]
                                                               (reset! message (String. data)))))]
-                            (.publish ps topic "Boo!")
+                            (.publish ps topic (.getBytes "Boo!"))
                             (Thread/sleep 1000)
                             @message => "Boo!"
                             (.stop subs)))])
@@ -136,4 +136,5 @@
      (test-module)
      (rmqlk/module)
      (lk/standard-descs)) => map?)
+
 

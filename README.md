@@ -53,10 +53,31 @@ use
                      ;; Force this pod to wait for the amqp port to be
                      ;; available befoe launching
                      (lku/wait-for-service-port event-broker :amqp)
-                     ;; Inject the QueueService driver into the my-cont container
+                     ;; Inject the QueueService and PubSubService drivers into the my-cont container
                      (lk/update-container :my-cont lku/inject-driver QueueService event-broker)
+					 (lk/update-container :my-cont lku/inject-driver PubSubService event-broker)
                      ;; ...
                      )))))
+```
+
+Inside the microservice code itself, the
+`injectthedriver.DriverFactory` class can be used to instantiate
+driver objects. For example, the following code instantiates a
+`QueueService`, defines a queue, and publishes on it.
+
+```clojure
+(let [qs (DriverFactory/createDriverFor QueueService)
+      q (.defineQueue qs "foo")]
+  (.enqueue q (.getBytes "Hello, World")))
+```
+
+Note that although this code is written in Clojure, this mechanism is
+Java-compatible, meaning that drivers are usable with from within any
+JVM language. In Java the above code should look like this:
+```java
+QueueService qs = (QueueService)DriverFactory.createDriverFor(QueueService.class);
+QueueService.Queue q = qs.defineQueue("foo");
+q.enqueue("Hello, World".getBytes());
 ```
 
 ## Development
