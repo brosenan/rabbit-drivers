@@ -1,4 +1,4 @@
-(defproject brosenan/rabbit-drivers "0.2.0"
+(defproject brosenan/rabbit-drivers "0.2.1-SNAPSHOT"
   :description "InjectTheDriver driver implementations for RabbitMQ"
   :url "https://github.com/brosenan/rabbit-drivers"
   :license {:name "Eclipse Public License"
