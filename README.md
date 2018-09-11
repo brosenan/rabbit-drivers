@@ -1,5 +1,6 @@
 # rabbit-drivers
 InjectTheDriver driver implementations for RabbitMQ.
+[![Clojars Project](https://img.shields.io/clojars/v/brosenan/rabbit-drivers.svg)](https://clojars.org/brosenan/rabbit-drivers)
 
 ## Usage
 
