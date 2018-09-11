@@ -100,7 +100,7 @@ __Note:__ The URL being used does not refer to a specific version of
 the uber-jar, but rather to the latest. One needs to be careful when
 introducing breaking changes.
 
-## Running The Tests
+### Running The Tests
 
 To run driver-level tests, use: `lein midje :filter -kube` (with or without `:autotest`).
 
