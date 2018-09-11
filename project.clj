@@ -4,7 +4,7 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.9.0"]
-                 [brosenan/injectthedriver "0.0.4-SNAPSHOT"]
+                 [brosenan/injectthedriver "0.0.4"]
                  [com.novemberain/langohr "5.0.0"]
                  [brosenan/lambdakube "0.8.1"]]
   :profiles {:dev {:dependencies [[midje "1.9.2"]]

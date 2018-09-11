@@ -10,7 +10,7 @@
   (:import java.util.HashMap
            (injectthedriver.interfaces QueueService$Queue
                                        QueueService$Callback
-                                       Stopable
+                                       Stoppable
                                        RecoverableError)))
 
 
@@ -84,7 +84,7 @@
        queue (qs/defineQueue driver ..name..)
        cb (reify QueueService$Callback
             (handleTask [this data]))]
-   (.register queue cb)) => (partial instance? Stopable)
+   (.register queue cb)) => (partial instance? Stoppable)
  (provided
   (lq/declare ..chan.. ..name.. irrelevant) => irrelevant
   (lc/subscribe ..chan.. ..name.. irrelevant) => ..constag..))

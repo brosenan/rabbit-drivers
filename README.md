@@ -79,6 +79,15 @@ __Note:__ The URL being used does not refer to a specific version of
 the uber-jar, but rather to the latest. One needs to be careful when
 introducing breaking changes.
 
+## Running The Tests
+
+To run driver-level tests, use: `lein midje :filter -kube` (with or without `:autotest`).
+
+To run Kubernetes-level tests:
+1. Make sure the file `rabbit-drivers-uber.jar` is updated to the latest driver version, and uploaded to GitHub (`git commit`, `git push`).
+2. Make sure you have a working Kubernetes cluster, with `kubectl` configured.
+3. `lein midje :filter kube`.
+
 ## License
 
 Copyright © 2018 Boaz Rosenan

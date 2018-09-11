@@ -7,7 +7,7 @@
             [langohr.consumers :as lc])
   (:import (injectthedriver.interfaces QueueService
                                        QueueService$Queue
-                                       Stopable
+                                       Stoppable
                                        RecoverableError))
   (:gen-class
    :name rabbit_drivers.RMQueuingService
@@ -47,7 +47,7 @@
         (lb/publish chan "" name task {:content-type "application/octet-stream"}))
       (register [this' cb]
         (let [constag (lc/subscribe chan name (callback-wrapper cb lb/ack lb/nack prn))]
-          (reify Stopable
+          (reify Stoppable
             (stop [this']
               (lb/cancel chan constag))))))))
 
