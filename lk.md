@@ -5,11 +5,11 @@
             [lambdakube.core :as lk]
             [lambdakube.util :as lku]
             [rabbit-drivers.lk :as rmqlk])
-  (:import injectthedriver.interfaces.QueueService))
+  (:import (injectthedriver.interfaces QueueService
+                                       PubSubService)))
 
 (defn test-module [$]
   (-> $
-      ;; An acceptance test for RabbitMQ.
       (lkt/test :with-single-rabbitmq
                 {:use-single-rabbitmq true}
                 [:event-broker]
@@ -19,7 +19,7 @@
                        :test
                        '[[org.clojure/clojure "1.9.0"]
                          [com.novemberain/langohr "5.0.0"]
-                         [brosenan/injectthedriver "0.0.4-SNAPSHOT"]]
+                         [brosenan/injectthedriver "0.0.5"]]
                        {:rabbitmq {:host (:hostname event-broker)
                                    :port (-> event-broker :ports :amqp)
                                    :username "guest"
@@ -35,7 +35,8 @@
                                      [langohr.consumers :as lc])
                            (:import (injectthedriver DriverFactory)
                                     (injectthedriver.interfaces QueueService
-                                                                QueueService$Callback)))
+                                                                QueueService$Callback
+                                                                PubSubService)))
                          (fact
                           "RabbitMQ sanity using Langohr"
                           ;; Roughly based on Langohr's "Hello World" example
@@ -107,9 +108,22 @@
                             (.enqueue q2 (.getBytes "Hi!"))
                             (Thread/sleep 1000)
                             @message => "Hi!"
+                            (.stop subs)))
+                         (fact
+                          "PubSub through the driver"
+                          (def message (atom ""))
+                          (let [topic "foo"
+                                ps (DriverFactory/createDriverFor PubSubService)
+                                subs (.subscribe ps topic (reify QueueService$Callback
+                                                            (handleTask [this data]
+                                                              (reset! message (String. data)))))]
+                            (.publish ps topic "Boo!")
+                            (Thread/sleep 1000)
+                            @message => "Boo!"
                             (.stop subs)))])
                       (lku/wait-for-service-port event-broker :amqp)
-                      (lk/update-container :test lku/inject-driver QueueService event-broker))))))
+                      (lk/update-container :test lku/inject-driver QueueService event-broker)
+                      (lk/update-container :test lku/inject-driver PubSubService event-broker))))))
 
 (fact :kube
  (-> (lk/injector)

@@ -220,7 +220,7 @@ The `.subscribe` method creates an exclusive queue, binds it to the
  (let [driver (MockObj. {:chan ..chan..})]
    (qs/subscribe driver ..topic.. ..callback..) => (partial instance? Stoppable)
    (provided
-    (lq/declare ..chan..) => ..q..
+    (lq/declare ..chan..) => {:queue ..q..}
     (lq/bind ..chan.. ..q.. "pubsub" {:routing-key ..topic..}) => irrelevant
     (lc/subscribe ..chan.. ..q.. (qs/callback-wrapper ..callback.. lb/ack lb/nack println)) => ..subs..)))
 
@@ -233,7 +233,7 @@ The returned object has a `.stop` method, which calls Langohr's
        subs (qs/subscribe driver ..topic.. ..callback..)]
    (.stop subs)) => nil
  (provided
-  (lq/declare ..chan..) => ..q..
+  (lq/declare ..chan..) => {:queue ..q..}
   (lq/bind ..chan.. ..q.. "pubsub" {:routing-key ..topic..}) => irrelevant
   (lc/subscribe ..chan.. ..q.. (qs/callback-wrapper ..callback.. lb/ack lb/nack println)) => ..subs..
   (lb/cancel ..chan.. ..subs..) => irrelevant))

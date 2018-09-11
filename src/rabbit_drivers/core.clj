@@ -65,7 +65,7 @@
 
 (defn subscribe [this topic callback]
   (let [chan (-> this .state :chan)
-        q (lq/declare chan)
+        q (-> (lq/declare chan) :queue)
         subs (lc/subscribe chan q (callback-wrapper callback lb/ack lb/nack println))]
     (lq/bind chan q "pubsub" {:routing-key topic})
     (reify Stoppable
