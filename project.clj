@@ -1,6 +1,6 @@
-(defproject brosenan/rabbit-drivers "0.1.1-SNAPSHOT"
+(defproject brosenan/rabbit-drivers "0.2.0-SNAPSHOT"
   :description "InjectTheDriver driver implementations for RabbitMQ"
-  :url "http://example.com/FIXME"
+  :url "https://github.com/brosenan/rabbit-drivers"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.9.0"]
