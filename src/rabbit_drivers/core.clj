@@ -10,8 +10,9 @@
                                        Stoppable
                                        RecoverableError))
   (:gen-class
-   :name rabbit_drivers.RMQueuingService
-   :implements [injectthedriver.interfaces.QueueService]
+   :name rabbit_drivers.RMQDriver
+   :implements [injectthedriver.interfaces.QueueService
+                injectthedriver.interfaces.PubSubService]
    :state state
    :init init
    :constructors {[java.util.Map] []}))
@@ -21,6 +22,7 @@
                :port (-> props (.get "ports") (.get "amqp"))}
         conn (rmq/connect props)
         chan (lch/open conn)]
+    (le/declare chan "pubsub" "topic" {:durable true})
     [[] {:conn conn
          :chan chan}]))
 
@@ -53,3 +55,21 @@
 
 
 (def -defineQueue defineQueue)
+
+(defn publish [this topic message]
+  (let [chan (-> this .state :chan)]
+    (lb/publish chan "pubsub" topic message)
+    nil))
+
+(def -publish publish)
+
+(defn subscribe [this topic callback]
+  (let [chan (-> this .state :chan)
+        q (lq/declare chan)
+        subs (lc/subscribe chan q (callback-wrapper callback lb/ack lb/nack println))]
+    (lq/bind chan q "pubsub" {:routing-key topic})
+    (reify Stoppable
+      (stop [this']
+        (lb/cancel chan subs)))))
+
+(def -subscribe subscribe)

@@ -16,11 +16,12 @@
 
 ;; # Initialization
 
-;; The `init` function (mapped to the constructor), takes a Java
-;; `Map` object containing properties for the queue service, and
-;; initializes a connection and a channel. The two are returned as the
-;; state of the object. The preceding empty vector in the return value
-;; is the list of parameters for the base-class constructor.
+;; The `init` function (mapped to the constructor), takes a Java `Map`
+;; object containing properties for the queue service, and initializes
+;; a connection and a channel. The two are returned as the state of
+;; the object. The preceding empty vector in the return value is the
+;; list of parameters for the base-class constructor.  To support
+;; pubsub, the `pubsub` exchange is declared.
 (fact
  (let [props (HashMap.)
        ports (HashMap.)]
@@ -33,14 +34,17 @@
    (provided
     (rmq/connect {:host "foo"
                   :port 1234}) => ..conn..
-    (lch/open ..conn..) => ..chan..)))
+    (lch/open ..conn..) => ..chan..
+    (le/declare ..chan.. "pubsub" "topic" {:durable true}) => irrelevant)))
 
 ;; Since `gen-class` creates Java objects for which the state
 ;; represented as Clojure values is given in a `.state` field, we
 ;; create the following struct to mock an object with such a field.
 (defrecord MockObj [state])
 
-;; # Defining a Queue
+;; # QueueService Implementation
+
+;; ## Defining a Queue
 
 ;; The `defineQueue` method takes a name and returns a queue
 ;; object. Internally, it defines a queue with the same name. It is
@@ -54,7 +58,7 @@
    (provided
     (lq/declare ..chan.. ..name.. {:exclusive false :auto-delete false}) => nil)))
 
-;; # Enqueuing
+;; ## Enqueuing
 
 ;; Given a queue, its `.enqueue` method publishes a task on
 ;; it. Internally, publishing is done on the default exchange, with a
@@ -72,7 +76,7 @@
     (lb/publish ..chan.. "" ..name.. msg {:content-type "application/octet-stream"}) => irrelevant)))
 
 
-;; # Registerring to Tasks
+;; ## Registerring to Tasks
 
 ;; The `.register` method of a queue takes a callback object
 ;; (implementation of
@@ -103,7 +107,7 @@
   (lc/subscribe ..chan.. ..name.. irrelevant) => ..constag..
   (lb/cancel ..chan.. ..constag..) => irrelevant))
 
-;; ## Callback Wrapper
+;; ### Callback Wrapper
 
 ;; The `callback-wrapper` function takes a `QueueService$Callback`
 ;; object, an ack function (intended to be `lb/ack`), a nack function
@@ -168,3 +172,36 @@
    @acks => [[..chan.. ..deltag..]]
    @nacks => []
    (first @logs) => (partial instance? Exception)))
+
+;; # PubSubService Implemnetation
+
+;; The `.publish` method takes a topic and a message, and publishes
+;; the topic on the message. It calls Langohr's `publish`, to publish
+;; on the `pubsub` exchange, with the topic as routing key.
+(fact
+ (let [driver (MockObj. {:chan ..chan..})]
+   (qs/publish driver ..topic.. ..msg..) => nil
+   (provided
+    (lb/publish ..chan.. "pubsub" ..topic.. ..msg..) => irrelevant)))
+
+;; The `.subscribe` method creates an exclusive queue, binds it to the
+;; `pubsub` exchange under the given topic, and subscribes to it.
+(fact
+ (let [driver (MockObj. {:chan ..chan..})]
+   (qs/subscribe driver ..topic.. ..callback..) => (partial instance? Stoppable)
+   (provided
+    (lq/declare ..chan..) => ..q..
+    (lq/bind ..chan.. ..q.. "pubsub" {:routing-key ..topic..}) => irrelevant
+    (lc/subscribe ..chan.. ..q.. (qs/callback-wrapper ..callback.. lb/ack lb/nack println)) => ..subs..)))
+
+;; The returned object has a `.stop` method, which calls Langohr's
+;; `cancel` on the subscriber.
+(fact
+ (let [driver (MockObj. {:chan ..chan..})
+       subs (qs/subscribe driver ..topic.. ..callback..)]
+   (.stop subs)) => nil
+ (provided
+  (lq/declare ..chan..) => ..q..
+  (lq/bind ..chan.. ..q.. "pubsub" {:routing-key ..topic..}) => irrelevant
+  (lc/subscribe ..chan.. ..q.. (qs/callback-wrapper ..callback.. lb/ack lb/nack println)) => ..subs..
+  (lb/cancel ..chan.. ..subs..) => irrelevant))
