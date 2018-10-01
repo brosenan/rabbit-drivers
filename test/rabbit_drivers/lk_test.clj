@@ -124,12 +124,14 @@
                       (lk/update-container :test lku/inject-driver QueueService event-broker)
                       (lk/update-container :test lku/inject-driver PubSubService event-broker))))))
 
-(fact :kube
- (-> (lk/injector)
-     (test-module)
-     (rmqlk/module)
-     (lk/standard-descs)
-     (lkt/kube-tests "rmq")) => "")
+(fact
+ :kube
+ (lku/with-docker-repo
+   (-> (lk/injector)
+       (test-module)
+       (rmqlk/module)
+       (lk/standard-descs)
+       (lkt/kube-tests "rmq"))) => "")
 
 (fact
  (-> (lk/injector)
